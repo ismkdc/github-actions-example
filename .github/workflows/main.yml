@@ -2,7 +2,7 @@ name: Publish Docker
 on:
   push:
     branches:
-      - master
+      - dev
 jobs:
   build:
     runs-on: ubuntu-latest
@@ -15,3 +15,19 @@ jobs:
         username: ${{ secrets.DOCKER_USERNAME }}
         password: ${{ secrets.DOCKER_PASSWORD }}
         snapshot: true
+  release:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+    - name: executing remote ssh commands using password
+      uses: appleboy/ssh-action@master
+      with:
+        host: ${{ secrets.SSH_HOST }}
+        username: ${{ secrets.SSH_USERNAME }}
+        password: ${{ secrets.SSH_PASSWORD }}
+        port: ${{ secrets.SSH_PORT }}
+        script: |
+          docker rm -f $(docker ps -aq -f name=github-actions-example)
+          docker rmi $(docker images | grep 'ismkdc/github-actions-example' | awk '{print $3}')
+          docker pull ismkdc/github-actions-example:dev
+          docker run --name github-actions-example -p 127.0.0.1:5000:80 --restart=always -d ismkdc/github-actions-example:master
